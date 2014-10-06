@@ -1,4 +1,10 @@
 {
+	"repositories": [
+		{
+			"type": "vcs",
+			"url": "https://github.com/stgnet/phpws"
+		}
+	],
     "require": {
         "php": ">=5.3.9",
         "educoder/pest": "1.0.0",
