@@ -29,19 +29,19 @@
             /*
              * load ARI configuration paramters from an external file, example:
              *
-             * ARI_USERNAME=ArthurDent
-             * ARI_PASSWORD=42
-             * ARI_SERVER=zaphod.example.org
-             * ARI_PORT=8088
-             * ARI_ENDPOINT=/ari
+             * USERNAME=ArthurDent
+             * PASSWORD=42
+             * SERVER=zaphod.example.org
+             * PORT=8088
+             * ENDPOINT=/ari
             */
             $conf=parse_ini_file("/etc/ari.ini");
 
             $appName="monkeys";
 
             // initialize the ARI connection
-            parent::__construct($conf['ARI_USERNAME'], $conf['ARI_PASSWORD'], $appName,
-                                $conf['ARI_SERVER'], $conf['ARI_PORT'], $conf['ARI_ENDPOINT']);
+            parent::__construct($conf['USERNAME'], $conf['PASSWORD'], $appName,
+                                $conf['SERVER'], $conf['PORT'], $conf['ENDPOINT']);
 
             // create a separate event handler for Stasis events
             $this->stasisEvent = new Evenement\EventEmitter();
