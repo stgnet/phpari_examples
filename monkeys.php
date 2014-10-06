@@ -24,14 +24,14 @@
         public function __construct()
         {
             /*
-			 * load ARI configuration paramters from an external file, example:
-			 *
-			 * ARI_USERNAME=ArthurDent
-			 * ARI_PASSWORD=42
-			 * ARI_SERVER=zaphod.example.org
-			 * ARI_PORT=8088
-			 * ARI_ENDPOINT=/ari
-			*/
+             * load ARI configuration paramters from an external file, example:
+             *
+             * ARI_USERNAME=ArthurDent
+             * ARI_PASSWORD=42
+             * ARI_SERVER=zaphod.example.org
+             * ARI_PORT=8088
+             * ARI_ENDPOINT=/ari
+            */
             $conf=parse_ini_file("/etc/ari.ini");
 
             $appName="monkeys";
