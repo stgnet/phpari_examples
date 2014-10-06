@@ -1,7 +1,7 @@
 phpari_examples
 ===============
 
-Asterisk ARI example using [PHPARI](https://github.com/greenfieldtech-nirs/phpari) library
+Asterisk ARI examples using [PHPARI](https://github.com/greenfieldtech-nirs/phpari) library
 
 Basic Examples
 --------------
