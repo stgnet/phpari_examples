@@ -15,6 +15,9 @@
  *
  * exten => 500,1,Stasis(monkeys)
  *
+ * For more details on configuring Asterisk and ARI:
+ * https://wiki.asterisk.org/wiki/display/AST/Getting+Started+with+ARI
+ *
  */
 
     require_once "vendor/autoload.php";
