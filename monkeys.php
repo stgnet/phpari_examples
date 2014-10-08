@@ -59,6 +59,9 @@
         {
             $this->stasisEvent->on('StasisStart', function ($event) {
                 $this->stasisLogger->notice('Starting monkeys on '.$event->channel->name);
+                // first answer the channel (otherwise playback is early media)
+                $this->channels->channel_answer($event->channel->id);
+                // play the desired sound on the channel
                 $this->channels->channel_playback($event->channel->id, "sound:tt-monkeys");
             });
 
