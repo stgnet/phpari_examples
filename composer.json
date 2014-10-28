@@ -1,11 +1,4 @@
 {
-    "repositories": [
-        {
-            "_comment": "remove when this pr merged: https://github.com/Devristo/phpws/pull/46",
-            "type": "vcs",
-            "url": "https://github.com/stgnet/phpws"
-        }
-    ],
     "require": {
         "php": ">=5.3.9",
         "educoder/pest": "1.0.0",

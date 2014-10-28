@@ -26,22 +26,10 @@
     {
         public function __construct()
         {
-            /*
-             * load ARI configuration paramters from an external file, example:
-             *
-             * USERNAME=ArthurDent
-             * PASSWORD=42
-             * SERVER=zaphod.example.org
-             * PORT=8088
-             * ENDPOINT=/ari
-            */
-            $conf=parse_ini_file("/etc/ari.ini");
-
             $appName="monkeys";
 
             // initialize the ARI connection
-            parent::__construct($conf['USERNAME'], $conf['PASSWORD'], $appName,
-                                $conf['SERVER'], $conf['PORT'], $conf['ENDPOINT']);
+            parent::__construct($appName, "ari.ini");
 
             // create a separate event handler for Stasis events
             $this->stasisEvent = new Evenement\EventEmitter();
