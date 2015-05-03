@@ -9,7 +9,7 @@
  *
  */
 
-    require_once "vendor/autoload.php";
+	require_once "vendor/autoload.php";
 
 	class ConferenceBridge
 	{
@@ -47,32 +47,28 @@
 		}
 	}
 
-    class ConferenceStasisApp extends phpari
-    {
-        public function __construct()
-        {
-            $conf=parse_ini_file("/etc/ari.ini");
+	class ConferenceStasisApp extends phpari
+	{
+		public function __construct()
+		{
+			$appName="conference";
 
-            $appName="conference";
+			parent::__construct($appName);
 
-            // initialize the ARI connection
-            parent::__construct($conf['USERNAME'], $conf['PASSWORD'], $appName,
-                                $conf['SERVER'], $conf['PORT'], $conf['ENDPOINT']);
+			// create a separate event handler for Stasis events
+			$this->stasisEvent = new Evenement\EventEmitter();
+			$this->StasisAppEventHandler();
 
-            // create a separate event handler for Stasis events
-            $this->stasisEvent = new Evenement\EventEmitter();
-            $this->StasisAppEventHandler();
+			// initialize the handler for websocket messages
+			$this->WebsocketClientHandler();
 
-            // initialize the handler for websocket messages
-            $this->WebsocketClientHandler();
-
-            // access to the needed api's
-            $this->channels = new channels($this);
+			// access to the needed api's
+			$this->channels = new channels($this);
 			$this->bridges = new bridges($this);
 
 			// conference bridges
 			$this->bridge = array();
-        }
+		}
 
 		public function findBridge($channel_id)
 		{
@@ -84,50 +80,50 @@
 			return NULL;
 		}
 
-        // process stasis events
-        public function StasisAppEventHandler()
-        {
-            $this->stasisEvent->on('StasisStart', function ($event) {
+		// process stasis events
+		public function StasisAppEventHandler()
+		{
+			$this->stasisEvent->on('StasisStart', function ($event) {
 				$number = $event->args[0];
 				if (empty($this->bridge[$number])) {
 					$this->bridge[$number] = new ConferenceBridge($this);
 				}
 				$this->bridge[$number]->addChannel($event->channel);
-            });
+			});
 
-            $this->stasisEvent->on('PlaybackFinished', function ($event) {
-                $channel_id=str_replace('channel:', '', $event->playback->target_uri);
-                //$this->channels->channel_delete($channel_id);
-            });
-        }
+			$this->stasisEvent->on('PlaybackFinished', function ($event) {
+				$channel_id=str_replace('channel:', '', $event->playback->target_uri);
+				//$this->channels->channel_delete($channel_id);
+			});
+		}
 
-        // handle the websocket connection, passing stasis events to handler above
-        public function WebsocketClientHandler()
-        {
-            $this->stasisClient->on("request", function ($headers) {
-                $this->stasisLogger->notice("Request received!");
-            });
+		// handle the websocket connection, passing stasis events to handler above
+		public function WebsocketClientHandler()
+		{
+			$this->stasisClient->on("request", function ($headers) {
+				$this->stasisLogger->notice("Request received!");
+			});
 
-            $this->stasisClient->on("handshake", function () {
-                $this->stasisLogger->notice("Handshake received!");
-            });
+			$this->stasisClient->on("handshake", function () {
+				$this->stasisLogger->notice("Handshake received!");
+			});
 
-            $this->stasisClient->on("message", function ($message) {
-                $event=json_decode($message->getData());
-                $this->stasisLogger->notice('Received event: '.$event->type);
-                $this->stasisEvent->emit($event->type, array($event));
-            });
-        }
+			$this->stasisClient->on("message", function ($message) {
+				$event=json_decode($message->getData());
+				$this->stasisLogger->notice('Received event: '.$event->type);
+				$this->stasisEvent->emit($event->type, array($event));
+			});
+		}
 
-        // initiate the websocket connection and run the event loop
-        public function run()
-        {
-            $this->stasisClient->open();
-            $this->stasisLoop->run();
-            // run() does not return
-        }
+		// initiate the websocket connection and run the event loop
+		public function run()
+		{
+			$this->stasisClient->open();
+			$this->stasisLoop->run();
+			// run() does not return
+		}
 
-    }
+	}
 
-    $monkeys = new ConferenceStasisApp();
-    $monkeys->run();
+	$app = new ConferenceStasisApp();
+	$app->run();
