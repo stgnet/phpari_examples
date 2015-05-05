@@ -17,10 +17,21 @@
 		{
 			$this->phpari = $phpari;
 			$this->id = uniqid('conference-php-');
-			$this->members = array();
+			$this->channels = array();
+			$this->stasisEvent = new Evenement\EventEmitter();
 
 			$result = $this->phpari->bridges->bridge_create('mixing', $this->id,"bogus");
-			print_r($result);
+
+			$this->stasisEvent->on("ChannelEnteredBridge", function ($event) {
+				$this->channels = $event->bridge->channels;
+				$this->phpari->bridges->playbackStart($this->id, "sound:confbridge-join");
+				$this->phpari->stasisLogger->notice('Bridge now has: '.print_r($this->channels,true));
+			});
+			$this->stasisEvent->on("ChannelLeftBridge", function ($event) {
+				$this->channels = $event->bridge->channels;
+				$this->phpari->bridges->playbackStart($this->id, "sound:confbridge-leave");
+				$this->phpari->stasisLogger->notice('Bridge now has: '.print_r($this->channels,true));
+			});
 		}
 
 		// add a channel to the bridge
@@ -29,21 +40,39 @@
 			echo 'Adding channel '.$channel->id."\n";
 			$this->phpari->channels->channel_answer($channel->id);
 
-			if (!count($this->members)) {
+			if (!count($this->channels)) {
 				$this->phpari->channels->channel_playback($channel->id, "sound:conf-onlyperson");
-			} else {
-				$this->phpari->channels->channel_playback($channel->id, "sound:conf-thereare");
 			}
-
-			$this->members[$channel->id]=$channel;
-
 			$result = $this->phpari->bridges->bridge_addchannel($this->id, $channel->id);
-			print_r($result);
 		}
+	}
 
-		// the channel has already left, remove it from members
-		public function leftChannel($channel)
+	class ConferenceChannel
+	{
+		public function __construct($phpari, $event)
 		{
+			$this->phpari = $phpari;
+			$this->phpari->stasisLogger->notice('Channel Created: '.print_r($event,true));
+			$this->stasisEvent = new Evenement\EventEmitter();
+
+			$this->channel = $event->channel;
+
+			$this->phpari->default_bridge->addChannel($event->channel);
+
+			$this->dtmf = '';
+
+			$this->stasisEvent->on("ChannelStateChange", function ($event) {
+				$this->channel = $event->channel;
+				$this->phpari->stasisLogger->notice($this->channel->name.' State Change: '.$this->channel->state);
+			});
+			$this->stasisEvent->on("StasisEnd", function ($event) {
+				unset ($this->phpari->channel[$this->channel->id]);
+				unset ($this);
+			});
+			$this->stasisEvent->on("ChannelDtmfReceived", function ($event) {
+				$this->dtmf .= $event->digit;
+				$this->phpari->stasisLogger->notice($this->channel->name.' DTMF: '.$this->dtmf);
+			});
 		}
 	}
 
@@ -53,11 +82,8 @@
 		{
 			$appName="conference";
 
+			// initialize the underlying phpari class
 			parent::__construct($appName);
-
-			// create a separate event handler for Stasis events
-			$this->stasisEvent = new Evenement\EventEmitter();
-			$this->StasisAppEventHandler();
 
 			// initialize the handler for websocket messages
 			$this->WebsocketClientHandler();
@@ -68,33 +94,13 @@
 
 			// conference bridges
 			$this->bridge = array();
-		}
 
-		public function findBridge($channel_id)
-		{
-			foreach ($this->bridge as $number => $bridge) {
-				if (!empty($this->bridge->members[$channel_id])) {
-					return $bridge;
-				}
-			}
-			return NULL;
-		}
+			// conference channels
+			$this->channel = array();
 
-		// process stasis events
-		public function StasisAppEventHandler()
-		{
-			$this->stasisEvent->on('StasisStart', function ($event) {
-				$number = $event->args[0];
-				if (empty($this->bridge[$number])) {
-					$this->bridge[$number] = new ConferenceBridge($this);
-				}
-				$this->bridge[$number]->addChannel($event->channel);
-			});
-
-			$this->stasisEvent->on('PlaybackFinished', function ($event) {
-				$channel_id=str_replace('channel:', '', $event->playback->target_uri);
-				//$this->channels->channel_delete($channel_id);
-			});
+			// default bridge
+			$this->default_bridge = new ConferenceBridge($this);
+			$this->bridge[$this->default_bridge->id]=$this->default_bridge;
 		}
 
 		// handle the websocket connection, passing stasis events to handler above
@@ -111,7 +117,25 @@
 			$this->stasisClient->on("message", function ($message) {
 				$event=json_decode($message->getData());
 				$this->stasisLogger->notice('Received event: '.$event->type);
-				$this->stasisEvent->emit($event->type, array($event));
+				if (!empty($event->bridge->id)) {
+					if (empty($this->bridge[$event->bridge->id])) {
+						$this->stasisLogger->notice('Bridge event received for unknown bridge');
+						return;
+					}
+					$bridge = $this->bridge[$event->bridge->id];
+					$this->stasisLogger->notice('Passing event to bridge '.$bridge->id);
+					$bridge->stasisEvent->emit($event->type, array($event));
+				} else if (!empty($event->channel->id)) {
+					if (empty($this->channel[$event->channel->id])) {
+						$this->channel[$event->channel->id] = new ConferenceChannel($this, $event);
+					}
+					$this->stasisLogger->notice('Passing event to channel '.$event->channel->id);
+					$channel = $this->channel[$event->channel->id];
+					$channel->stasisEvent->emit($event->type, array($event));
+				} else {
+					if (empty($event->playback))
+						$this->stasisLogger->notice('Unhandled event! '.print_r($event,true));
+				}
 			});
 		}
 
